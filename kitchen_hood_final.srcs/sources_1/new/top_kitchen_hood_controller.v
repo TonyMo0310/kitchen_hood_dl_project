@@ -1,57 +1,59 @@
 `timescale 1ns / 1ps
 
 module top_kitchen_hood_controller (
-    input wire clk,              
-    input wire rst_n_raw,        
-    input wire power_btn_raw,    
-    input wire menu_btn,         
-    input wire level1_btn_raw,   
-    input wire level2_btn_raw,  
-    input wire level3_btn_raw,  
-    input wire self_clean_btn_raw, 
-    input wire power_left_right_control,  
-    input wire manual_reset_btn,  
-    input wire hour_increment,   
-    input wire minute_increment,  
-    input wire query_upper_accumulated_time_switch,         
-    input wire upper_hour_increase_switch,  
-    input wire increase_gesture_time,  // New input
-    input wire query_gesture_time,     // New input
-    input wire lighting_switch,    // Switch input for lighting control
+    input wire clk,                            // System clock
+    input wire rst_n_raw,                      // Raw reset signal
+    input wire power_btn_raw,                  // Power button raw signal
+    input wire menu_btn,                       // Menu button signal
+    input wire level1_btn_raw,                 // Level 1 button raw signal
+    input wire level2_btn_raw,                 // Level 2 button raw signal
+    input wire level3_btn_raw,                 // Level 3 button raw signal
+    input wire self_clean_btn_raw,             // Self-clean button raw signal
+    input wire power_left_right_control,       // Control for power direction
+    input wire manual_reset_btn,                // Manual reset button
+    input wire hour_increment,                  // Hour increment button
+    input wire minute_increment,                // Minute increment button
+    input wire query_upper_accumulated_time_switch, // Query switch for upper accumulated time
+    input wire upper_hour_increase_switch,      // Switch for increasing upper hour
+    input wire increase_gesture_time,          // New input for increasing gesture time
+    input wire query_gesture_time,             // New input for querying gesture time
+    input wire lighting_switch,                 // Switch input for lighting control
     input wire query_accumulated_time_switch,  // New input for querying accumulated time
-    output wire [4:0] query_leds,    
-    output wire [2:0] query_gesture_time_value,  // New output
-    output wire [2:0] current_mode,
-    output wire [1:0] extraction_level,
-    output wire cleaning_active,
-    output wire reminder_led,
-    output wire [7:0] seg_en,     
-    output wire [7:0] seg_out0,  
-    output wire [7:0] seg_out1,
-    output wire lighting_state    // Lighting status output   
+    output wire [4:0] query_leds,              // Output for query LEDs
+    output wire [2:0] query_gesture_time_value, // New output for gesture time value
+    output wire [2:0] current_mode,            // Current operational mode
+    output wire [1:0] extraction_level,        // Current extraction level
+    output wire cleaning_active,                // Indicates if cleaning is active
+    output wire reminder_led,                   // Reminder LED output
+    output wire [7:0] seg_en,                   // 7-segment enable signals
+    output wire [7:0] seg_out0,                 // 7-segment output for display 0
+    output wire [7:0] seg_out1,                 // 7-segment output for display 1
+    output wire lighting_state                   // Lighting status output   
 );
 
-    wire [5:0] current_hours;
-    wire [5:0] current_minutes;
-    wire [5:0] current_seconds;
-    wire [7:0] countdown_seconds;
-    wire display_countdown;
-    wire [4:0] hours_display;  
-    wire upper_hour_increase_switch_debounced;
-    wire increase_gesture_time_debounced;  // New wire
-    wire power_state;
-    wire [7:0] gesture_countdown;
-    wire display_gesture_countdown;
-    wire [31:0] accumulated_seconds;    // New wire
-    wire display_accumulated_time;      // New wire
+    // Internal wire declarations
+    wire [5:0] current_hours;                  // Current hours
+    wire [5:0] current_minutes;                // Current minutes
+    wire [5:0] current_seconds;                // Current seconds
+    wire [7:0] countdown_seconds;              // Countdown seconds
+    wire display_countdown;                    // Display countdown flag
+    wire [4:0] hours_display;                  // Display hours
+    wire upper_hour_increase_switch_debounced; // Debounced upper hour increase switch
+    wire increase_gesture_time_debounced;      // Debounced gesture time increase wire
+    wire power_state;                          // Power state of the system
+    wire [7:0] gesture_countdown;              // Gesture countdown value
+    wire display_gesture_countdown;            // Flag to display gesture countdown
+    wire [31:0] accumulated_seconds;           // Accumulated seconds
+    wire display_accumulated_time;             // Flag to display accumulated time
 
-    //for debounce buttons
-    wire rst_n_debounced;
-    wire level1_btn_debounced;
-    wire level2_btn_debounced;
-    wire level3_btn_debounced;
-    wire self_clean_btn_debounced;
+    // Debounced button signals
+    wire rst_n_debounced;                      // Debounced reset signal
+    wire level1_btn_debounced;                 // Debounced level 1 button signal
+    wire level2_btn_debounced;                 // Debounced level 2 button signal
+    wire level3_btn_debounced;                 // Debounced level 3 button signal
+    wire self_clean_btn_debounced;             // Debounced self-clean button signal
 
+    // Power controller instance
     power_controller power_ctrl (
         .clk(clk),
         .rst_n(rst_n_debounced),
@@ -67,7 +69,8 @@ module top_kitchen_hood_controller (
         .query_gesture_time_value(query_gesture_time_value)       // New connection
     );
 
-    time_controller time_count(
+    // Time controller instance
+    time_controller time_count (
         .clk(clk),
         .rst_n(rst_n_debounced),
         .power_state(power_state),
@@ -79,6 +82,7 @@ module top_kitchen_hood_controller (
         .current_mode(current_mode)
     );
 
+    // Lighting controller instance
     lighting_controller light_ctrl (
         .clk(clk),
         .rst_n(rst_n_debounced),
@@ -87,6 +91,7 @@ module top_kitchen_hood_controller (
         .lighting_state(lighting_state)
     );
 
+    // Segment display controller instance
     segment_display_controller seg_controller1 (
         .clk(clk),
         .rst_n(rst_n_debounced),
@@ -105,8 +110,8 @@ module top_kitchen_hood_controller (
         .power_state(power_state)
     );
 
-
-        mode_controller controller (
+    // Mode controller instance
+    mode_controller controller (
         .clk(clk),
         .rst_n(rst_n_debounced),
         .power_state(power_state),
@@ -131,6 +136,7 @@ module top_kitchen_hood_controller (
         .display_accumulated_time(display_accumulated_time)            // New connection
     );
 
+    // Button debounce controllers
     button_debouncer_controller debounce_rst (
         .clk(clk),
         .btn_in(rst_n_raw),
@@ -174,9 +180,3 @@ module top_kitchen_hood_controller (
     );
 
 endmodule
-
-
-
-
-
-
