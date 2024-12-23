@@ -16,35 +16,35 @@ module power_controller (
 );
 
     // States for gesture control
-    localparam IDLE = 2'b00;
-    localparam WAIT_FOR_RIGHT = 2'b01;
-    localparam WAIT_FOR_LEFT = 2'b10;
+    localparam IDLE = 2'b00;                     // Idle state
+    localparam WAIT_FOR_RIGHT = 2'b01;           // Waiting for right gesture
+    localparam WAIT_FOR_LEFT = 2'b10;            // Waiting for left gesture
     
-    reg [31:0] power_press_counter;
-    wire power_btn_debounced;
-    reg prev_power_btn;
-    reg [26:0] countdown_counter;
-    reg [1:0] gesture_state;
-    reg long_press_detected;
-    reg waiting_for_release;
-    reg left_btn_prev;
-    reg right_btn_prev;
-    wire level1_btn_debounced;
-    wire level2_btn_debounced;
+    reg [31:0] power_press_counter;               // Counter for power button press duration
+    wire power_btn_debounced;                     // Debounced power button signal
+    reg prev_power_btn;                           // Previous state of power button
+    reg [26:0] countdown_counter;                 // Countdown timer for gestures
+    reg [1:0] gesture_state;                      // Current state of gesture control
+    reg long_press_detected;                       // Flag for long press detection
+    reg waiting_for_release;                       // Flag to wait for button release
+    reg left_btn_prev;                            // Previous state of level 1 button
+    reg right_btn_prev;                           // Previous state of level 2 button
+    wire level1_btn_debounced;                    // Debounced level 1 button signal
+    wire level2_btn_debounced;                    // Debounced level 2 button signal
     
     // Gesture time control
-    reg [2:0] current_gesture_time;
-    reg [25:0] time_increase_counter;   
-    reg time_increase_stable;
-    reg prev_time_increase_stable;
-    reg in_standby;
+    reg [2:0] current_gesture_time;               // Current gesture duration
+    reg [25:0] time_increase_counter;             // Counter for gesture time increase
+    reg time_increase_stable;                     // Stable state for gesture time increase
+    reg prev_time_increase_stable;                // Previous stable state for gesture time increase
+    reg in_standby;                               // Flag indicating if in standby mode
     
     // Constants
-    localparam LONG_PRESS_TIME = 32'd300_000_000;
-    localparam ONE_SECOND = 32'd100_000_000;
-    parameter GESTURE_TIME_DEBOUNCE_LIMIT = 50_000_000;  // 0.5 second (100MHz clock)
+    localparam LONG_PRESS_TIME = 32'd300_000_000; // Long press duration (3 seconds)
+    localparam ONE_SECOND = 32'd100_000_000;      // One second in clock cycles
+    parameter GESTURE_TIME_DEBOUNCE_LIMIT = 50_000_000;  // 0.5 second debounce limit
 
-    // Button debouncers
+    // Button debouncers for power and level buttons
     button_debouncer_controller power_btn_debouncer (
         .clk(clk),
         .btn_in(power_btn_raw),
@@ -71,21 +71,21 @@ module power_controller (
     // 0.5s debouncing block for gesture time increase
     always @(posedge clk) begin
         if (!rst_n) begin
-            time_increase_counter <= 0;
-            time_increase_stable <= 0;
+            time_increase_counter <= 0;            // Reset time increase counter
+            time_increase_stable <= 0;              // Reset stable flag
         end
         else begin
             if (increase_gesture_time && in_standby) begin  // Only in standby mode
                 if (time_increase_counter >= GESTURE_TIME_DEBOUNCE_LIMIT) begin
-                    time_increase_stable <= 1;
+                    time_increase_stable <= 1;    // Set stable if counter exceeds limit
                 end
                 else begin
-                    time_increase_counter <= time_increase_counter + 1;
+                    time_increase_counter <= time_increase_counter + 1; // Increment counter
                 end
             end
             else begin
-                time_increase_counter <= 0;
-                time_increase_stable <= 0;
+                time_increase_counter <= 0;      // Reset counter if not increasing
+                time_increase_stable <= 0;       // Reset stable flag
             end
         end
     end
@@ -93,9 +93,9 @@ module power_controller (
     // Gesture time handling block
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            current_gesture_time <= 3'd5;  // Default 5 seconds
-            prev_time_increase_stable <= 0;
-            query_gesture_time_value <= 3'd0;
+            current_gesture_time <= 3'd5;      // Default gesture time to 5 seconds
+            prev_time_increase_stable <= 0;    // Reset previous stable flag
+            query_gesture_time_value <= 3'd0;   // Reset query value
         end
         else begin
             prev_time_increase_stable <= time_increase_stable;
@@ -103,19 +103,19 @@ module power_controller (
             // Handle gesture time increase - only in standby mode
             if (in_standby && time_increase_stable && !prev_time_increase_stable) begin
                 if (current_gesture_time >= 3'd7) begin
-                    current_gesture_time <= 3'd0;
+                    current_gesture_time <= 3'd0; // Wrap around gesture time
                 end
                 else begin
-                    current_gesture_time <= current_gesture_time + 1;
+                    current_gesture_time <= current_gesture_time + 1; // Increment gesture time
                 end
             end
             
             // Handle query display - only in standby mode
             if (query_gesture_time && in_standby) begin
-                query_gesture_time_value <= current_gesture_time;
+                query_gesture_time_value <= current_gesture_time; // Set query value
             end
             else begin
-                query_gesture_time_value <= 3'd0;
+                query_gesture_time_value <= 3'd0; // Reset query value
             end
         end
     end
@@ -123,30 +123,30 @@ module power_controller (
     // Main power control logic
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            power_press_counter <= 0;
-            prev_power_btn <= 0;
-            gesture_state <= IDLE;
-            gesture_countdown <= 0;
-            display_gesture_countdown <= 0;
-            countdown_counter <= 0;
-            long_press_detected <= 0;
-            waiting_for_release <= 0;
-            left_btn_prev <= 0;
-            right_btn_prev <= 0;
+            power_press_counter <= 0;            // Reset power press counter
+            prev_power_btn <= 0;                  // Reset previous power button state
+            gesture_state <= IDLE;                 // Set gesture state to idle
+            gesture_countdown <= 0;                // Reset gesture countdown
+            display_gesture_countdown <= 0;       // Turn off countdown display
+            countdown_counter <= 0;                // Reset countdown timer
+            long_press_detected <= 0;              // Reset long press flag
+            waiting_for_release <= 0;              // Reset waiting for release flag
+            left_btn_prev <= 0;                    // Reset left button previous state
+            right_btn_prev <= 0;                   // Reset right button previous state
         end
         else begin
-            prev_power_btn <= power_btn_debounced;
-            left_btn_prev <= level1_btn_debounced;
-            right_btn_prev <= level2_btn_debounced;
+            prev_power_btn <= power_btn_debounced; // Update previous power button state
+            left_btn_prev <= level1_btn_debounced;  // Update previous left button state
+            right_btn_prev <= level2_btn_debounced; // Update previous right button state
             
             // Power button handling
             if (power_btn_debounced) begin
                 if (power_state && !waiting_for_release) begin
-                    power_press_counter <= power_press_counter + 1;
+                    power_press_counter <= power_press_counter + 1; // Increment press counter
                     if (power_press_counter >= LONG_PRESS_TIME) begin
-                        power_state <= 0;
-                        waiting_for_release <= 1;
-                        long_press_detected <= 1;
+                        power_state <= 0;         // Turn off power on long press
+                        waiting_for_release <= 1; // Set waiting for release flag
+                        long_press_detected <= 1;  // Set long press detected flag
                     end
                 end
             end
@@ -155,14 +155,14 @@ module power_controller (
                     if (!waiting_for_release && !long_press_detected && 
                         power_press_counter < LONG_PRESS_TIME) begin
                         if (!power_state) begin
-                            power_state <= 1;
+                            power_state <= 1;      // Turn on power if it was off
                         end
                     end
                 end
-                power_press_counter <= 0;
+                power_press_counter <= 0;            // Reset power press counter
                 if (!prev_power_btn) begin
-                    long_press_detected <= 0;
-                    waiting_for_release <= 0;
+                    long_press_detected <= 0;        // Reset long press detected flag
+                    waiting_for_release <= 0;        // Reset waiting for release flag
                 end
             end
             
@@ -170,61 +170,61 @@ module power_controller (
             if (power_left_right_control) begin
                 // Update countdown timer
                 if (countdown_counter >= ONE_SECOND) begin
-                    countdown_counter <= 0;
+                    countdown_counter <= 0;          // Reset countdown counter
                     if (gesture_countdown > 0) begin
-                        gesture_countdown <= gesture_countdown - 1;
+                        gesture_countdown <= gesture_countdown - 1; // Decrement gesture countdown
                     end
                 end
                 else begin
-                    countdown_counter <= countdown_counter + 1;
+                    countdown_counter <= countdown_counter + 1; // Increment countdown counter
                 end
 
                 case (gesture_state)
                     IDLE: begin
                         if (!power_state && level1_btn_debounced && !left_btn_prev) begin
-                            gesture_state <= WAIT_FOR_RIGHT;
-                            gesture_countdown <= current_gesture_time;
-                            display_gesture_countdown <= 1;
-                            countdown_counter <= 0;
+                            gesture_state <= WAIT_FOR_RIGHT; // Transition to wait for right gesture
+                            gesture_countdown <= current_gesture_time; // Set countdown
+                            display_gesture_countdown <= 1; // Show countdown
+                            countdown_counter <= 0; // Reset countdown
                         end
                         else if (power_state && level2_btn_debounced && !right_btn_prev) begin
-                            gesture_state <= WAIT_FOR_LEFT;
-                            gesture_countdown <= current_gesture_time;
-                            display_gesture_countdown <= 1;
-                            countdown_counter <= 0;
+                            gesture_state <= WAIT_FOR_LEFT; // Transition to wait for left gesture
+                            gesture_countdown <= current_gesture_time; // Set countdown
+                            display_gesture_countdown <= 1; // Show countdown
+                            countdown_counter <= 0; // Reset countdown
                         end
                     end
 
                     WAIT_FOR_RIGHT: begin
                         if (gesture_countdown == 0) begin
-                            gesture_state <= IDLE;
-                            display_gesture_countdown <= 0;
+                            gesture_state <= IDLE;     // Back to idle if countdown is zero
+                            display_gesture_countdown <= 0; // Turn off countdown display
                         end
                         else if (level2_btn_debounced && !right_btn_prev) begin
-                            power_state <= 1;
-                            gesture_state <= IDLE;
-                            display_gesture_countdown <= 0;
+                            power_state <= 1;          // Turn on power for right gesture
+                            gesture_state <= IDLE;     // Back to idle
+                            display_gesture_countdown <= 0; // Turn off countdown display
                         end
                     end
 
                     WAIT_FOR_LEFT: begin
                         if (gesture_countdown == 0) begin
-                            gesture_state <= IDLE;
-                            display_gesture_countdown <= 0;
+                            gesture_state <= IDLE;     // Back to idle if countdown is zero
+                            display_gesture_countdown <= 0; // Turn off countdown display
                         end
                         else if (level1_btn_debounced && !left_btn_prev) begin
-                            power_state <= 0;
-                            gesture_state <= IDLE;
-                            display_gesture_countdown <= 0;
+                            power_state <= 0;          // Turn off power for left gesture
+                            gesture_state <= IDLE;     // Back to idle
+                            display_gesture_countdown <= 0; // Turn off countdown display
                         end
                     end
 
-                    default: gesture_state <= IDLE;
+                    default: gesture_state <= IDLE;         // Default to idle state
                 endcase
             end
             else begin
-                gesture_state <= IDLE;
-                display_gesture_countdown <= 0;
+                gesture_state <= IDLE;                  // Reset gesture state to idle
+                display_gesture_countdown <= 0;        // Turn off countdown display
             end
         end
     end
