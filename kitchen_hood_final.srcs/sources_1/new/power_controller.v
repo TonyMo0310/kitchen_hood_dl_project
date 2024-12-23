@@ -123,7 +123,6 @@ module power_controller (
     // Main power control logic
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-//            power_state <= 0;
             power_press_counter <= 0;
             prev_power_btn <= 0;
             gesture_state <= IDLE;
@@ -231,7 +230,3 @@ module power_controller (
     end
 
 endmodule
-
-
-
-
